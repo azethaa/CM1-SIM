@@ -1,0 +1,80 @@
+/* GLOBAL */
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f5f7fa;
+  color: #333;
+  text-align: justify;
+}
+
+/* JUDUL */
+h1 {
+  text-align: center;
+  border-bottom: 4px solid #3498db;
+  padding-bottom: 10px;
+}
+
+h2 {
+  color: #2c3e50;
+  border-left: 6px solid #3498db;
+  padding-left: 10px;
+}
+
+h3 {
+  color: #2980b9;
+}
+
+/*  TABLE */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  margin-top: 15px;
+}
+
+/* HEADER TABLE */
+th {
+  background-color: #3498db;
+  color: white;
+  padding: 10px;
+  text-align: center;   /* 🔥 INI YANG BIKIN KE TENGAH */
+}
+
+/* ISI TABLE */
+td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;   /* 🔥 INI JUGA */
+  font-weight: bold;    /* biar angka lebih jelas */
+}
+
+/* STRIPES */
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+/* HOVER */
+tr:hover {
+  background-color: #d6eaf8;
+}
+
+/*  CODE BLOCK */
+pre {
+  background-color: #2d3436;
+  color: #ecf0f1;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+/* INSIGHT BOX */
+blockquote {
+  background: #eaf2f8;
+  border-left: 5px solid #3498db;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+/* GAMBAR / PLOT */
+img {
+  display: block;
+  margin: auto;
+}

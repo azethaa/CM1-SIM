@@ -1,0 +1,183 @@
+---
+title: "Case Method 1"
+author: "Ahmad Zaakiy Hidayat"
+date: "2026-05-21"
+output: 
+  html_document:
+    css: styles.css
+---
+```{r include=FALSE, warning=FALSE}
+library(DBI)
+library(RMySQL)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+```
+
+
+## Koneksi ke MySQL
+```{r include = FALSE}
+con <- dbConnect(
+  RMySQL::MySQL(),
+  dbname = "sakila",
+  host = "localhost",
+  user = "root",
+  password = "zaakiy2005"
+)
+```
+
+Koneksi ke database MySQL dilakukan menggunakan package **DBI** dan **RMySQL** di R. Koneksi ini memungkinkan pengambilan data secara langsung dari database Sakila menggunakan query SQL, sehingga proses analisis dapat dilakukan secara efisien tanpa perlu memindahkan data secara manual.
+
+## Deskripsi Data
+Database yang digunakan dalam analisis ini adalah **Sakila**, yaitu database contoh yang disediakan oleh **MySQL** untuk keperluan pembelajaran dan latihan analisis data. Database ini merepresentasikan sistem penyewaan film (DVD rental) yang mencakup berbagai informasi terkait pelanggan, film, transaksi penyewaan, serta pembayaran.
+
+Dataset ini bersifat relasional, yang terdiri dari beberapa tabel yang saling terhubung melalui *primary key* dan *foreign key*. Struktur ini memungkinkan dilakukan analisis yang lebih kompleks dengan menggabungkan beberapa tabel.
+
+## Analisis Data
+### 1. Total revenue
+$$
+\text{Total Revenue} = \sum_{i=1}^{n} x_i
+$$
+Keterangan:
+
+- \( x_i \) = jumlah pembayaran pada transaksi ke-i  
+- \( n \) = jumlah seluruh transaksi  
+```{r warning = FALSE}
+query_total <- "
+SELECT SUM(amount) AS total_revenue
+FROM payment
+"
+
+total_rev <- dbGetQuery(con, query_total)
+kable(total_rev)
+```
+Total revenue merupakan akumulasi seluruh transaksi pembayaran yang terjadi.
+
+### 2. Rata-rata pendapatan per transaksi
+$$
+\bar{x} = \frac{\sum_{i=1}^{n} x_i}{n}
+$$
+Keterangan:
+
+- \( \bar{x} \) = rata-rata pendapatan per transaksi  
+- \( x_i \) = jumlah pembayaran pada transaksi ke-i  
+- \( n \) = jumlah seluruh transaksi  
+```{r warning = FALSE}
+query_avg <- "
+SELECT AVG(amount) AS avg_revenue
+FROM payment
+"
+
+avg_rev <- dbGetQuery(con, query_avg)
+kable(avg_rev)
+```
+Berdasarkan perhitungan rata-rata menggunakan rumus \sum_{i=1}^{n} x_i, diperoleh bahwa rata-rata pendapatan per transaksi berada pada nilai tertentu. Hal ini menunjukkan bahwa secara umum setiap transaksi memberikan kontribusi yang relatif stabil terhadap total pendapatan.
+  
+### 3. 5 Film terbaik berdasarkan pendapatan
+```{r warning = FALSE}
+query <- "
+SELECT c.name AS category, SUM(p.amount) AS revenue
+FROM payment p
+JOIN rental r ON p.rental_id = r.rental_id
+JOIN inventory i ON r.inventory_id = i.inventory_id
+JOIN film f ON i.film_id = f.film_id
+JOIN film_category fc ON f.film_id = fc.film_id
+JOIN category c ON fc.category_id = c.category_id
+GROUP BY c.name
+ORDER BY revenue DESC
+"
+
+data <- dbGetQuery(con, query)
+kable(data)
+```
+
+### Visualisasi
+```{r}
+# ambil top 5
+top5 <- data %>%
+  arrange(desc(revenue)) %>%
+  slice(1:5)
+
+# tandai top 5
+data$top5 <- ifelse(data$category %in% top5$category, "Top 5", "Lainnya")
+
+# plot
+ggplot(data, aes(x = reorder(category, revenue), y = revenue, fill = top5)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_manual(values = c("Top 5" = "tomato", "Lainnya" = "grey")) +
+  labs(
+    title = "Top 5 Kategori Film Berdasarkan Revenue",
+    x = "Kategori",
+    y = "Total Revenue",
+    fill = "Kategori"
+  )
+```
+
+
+Berdasarkan hasil visualisasi, kategori film dengan pendapatan tertinggi adalah kategori **Sports**. Hal ini menunjukkan bahwa kategori tersebut memiliki tingkat permintaan yang lebih tinggi dibandingkan kategori lainnya. Sebaliknya, kategori dengan pendapatan terendah adalah kategori **Music**, yang mengindikasikan rendahnya minat pelanggan terhadap kategori tersebut.
+
+### 4. 10 Film yang memiliki popularitas tertinggi berdasarkan total rental
+```{r}
+query3 <- "
+SELECT f.title, COUNT(r.rental_id) AS total_rental
+FROM film f
+JOIN inventory i ON f.film_id = i.film_id
+JOIN rental r ON i.inventory_id = r.inventory_id
+GROUP BY f.title
+ORDER BY total_rental DESC
+LIMIT 10
+"
+
+film_pop <- dbGetQuery(con, query3)
+kable(film_pop)
+```
+
+
+### Visualisasi
+
+```{r echo=FALSE}
+ggplot(film_pop, aes(x = reorder(title, total_rental), y = total_rental)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Film Paling Populer",
+    x = "Film",
+    y = "Jumlah Rental"
+  )
+```
+
+Hasil analisis menunjukkan bahwa beberapa film memiliki tingkat penyewaan yang jauh lebih tinggi dibandingkan film lainnya. Dengan film yang paling banyak disewa adalah **Bucket Brotherhood** dengan jumlah sewa mencapai 34 kali disewa. Film-film tersebut dapat dianggap sebagai film populer yang memiliki daya tarik tinggi bagi pelanggan. Hal ini dapat digunakan sebagai dasar dalam pengambilan keputusan terkait pengadaan atau promosi film.
+
+
+### 5. Perbandingan pendapatan antar toko
+```{r warning = FALSE}
+query4 <- "
+SELECT s.store_id, SUM(p.amount) AS revenue
+FROM store s
+JOIN staff st ON s.store_id = st.store_id
+JOIN payment p ON st.staff_id = p.staff_id
+GROUP BY s.store_id
+"
+
+store_rev <- dbGetQuery(con, query4)
+kable(store_rev)
+```
+
+### Visualisasi
+```{r echo=FALSE}
+ggplot(store_rev, aes(x = factor(store_id), y = revenue, fill = factor(store_id))) +
+  geom_bar(stat = "identity", width = 0.4) +
+  geom_text(aes(label = round(revenue,0)), vjust = -0.5) +
+  scale_fill_manual(values = c("1" = "orange", "2" = "steelblue")) +
+  labs(
+    title = "Revenue per Store",
+    x = "Store",
+    y = "Total Revenue"
+  ) +
+  theme_minimal()
+```
+
+Berdasarkan hasil analisis, terdapat perbedaan pendapatan antara masing-masing store. Store dengan pendapatan lebih tinggi (Store 2) menunjukkan performa yang lebih baik dalam menghasilkan transaksi. Hal ini dapat dipengaruhi oleh lokasi, jumlah pelanggan, atau efektivitas operasional store tersebut.
+
+
